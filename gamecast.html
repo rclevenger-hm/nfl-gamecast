@@ -23,6 +23,14 @@
     --text: #17191c; --muted: #5f6773; --accent: #a97e00; --score-hl: #000;
   }
   body.light .play.scoring { background: rgba(169,126,0,.08); }
+  /* "Director" theme — Chargers bolt yellow + electric teal on black (?theme=director) */
+  body.director {
+    --bg: #060709; --panel: #0e1216; --panel2: #131a20; --border: #14333f;
+    --text: #f5f8fa; --muted: #86a3b3; --accent: #ffd400; --live: #ff4040; --score-hl: #fff;
+  }
+  body.director .topbar { border-bottom: 3px solid #1fdbe8; }
+  body.director .brand span { color: var(--accent); }
+  body.director .brand::before { content: "⚡ "; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: var(--bg);
@@ -678,12 +686,17 @@
     else if (!isFinal) refresh();
   });
 
-  // day / night mode (remembered per browser)
+  // day / night mode (remembered per browser); ?theme=director overrides with the stream skin
   (function () {
+    var btn = $("themeToggle");
+    if (qs.get("theme") === "director") {
+      document.body.classList.add("director");
+      btn.style.display = "none";
+      return;
+    }
     var mode = null;
     try { mode = localStorage.getItem("gc-theme"); } catch (e) {}
     if (!mode) mode = (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
-    var btn = $("themeToggle");
     function apply(m) {
       document.body.classList.toggle("light", m === "light");
       btn.textContent = m === "light" ? "🌙" : "☀️";
