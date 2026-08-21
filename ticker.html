@@ -148,6 +148,24 @@
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) clearTimeout(timer); else refresh();
   });
+
+  // Standalone letterbox: opened directly in a tall window (not embedded/OBS),
+  // render as a centered 180px strip instead of stretching to fill the screen.
+  function fitStrip() {
+    if (window.self !== window.top) return;
+    var h = window.innerHeight, b = document.body.style;
+    if (h <= 350) { b.transform = ""; b.marginTop = ""; b.width = ""; return; }
+    var s = 180 / h;
+    b.transformOrigin = "top left";
+    b.transform = "scale(" + s + ")";
+    b.width = (100 / s) + "%";
+    b.marginTop = ((h - 180) / 2) + "px";
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.background = "#000";
+  }
+  window.addEventListener("resize", fitStrip);
+  fitStrip();
+
   refresh();
 })();
 </script>
