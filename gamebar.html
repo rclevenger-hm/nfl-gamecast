@@ -8,33 +8,43 @@
   :root { --bg: #0d0f12; --panel: #16191f; --border: #2a2f38; --text: #e8eaed; --muted: #9aa2ad; --accent: #ffcc00; --live: #e33; }
   body.light { --bg: #f2f3f5; --panel: #ffffff; --border: #d5d9df; --text: #17191c; --muted: #5f6773; --accent: #a97e00; }
   body.transparent { --bg: transparent; --border: rgba(128,128,128,.25); }
+  /* "Director" theme — Chargers bolt yellow + electric teal on black */
+  body.director { --bg: #060709; --border: #14333f; --text: #f5f8fa; --muted: #86a3b3; --accent: #ffd400; --live: #ff4040; }
+  body.director a.bar { border-top: 1.6vh solid #1fdbe8; border-bottom: 1.6vh solid #1fdbe8; }
+  body.director .brandblock { display: flex; }
+  .brandblock {
+    display: none; align-items: center; align-self: stretch; padding: 0 3vh; margin-right: 1vh;
+    background: linear-gradient(135deg, #ffd400 60%, #ffb300); color: #0a1a4d;
+    font-weight: 900; font-size: 26vh; letter-spacing: .3vh; white-space: nowrap;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     background: var(--bg); color: var(--text); overflow: hidden; white-space: nowrap;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  a.bar { display: flex; align-items: center; height: 100%; text-decoration: none; color: inherit; gap: 2.5vh; padding: 0 3vh; }
-  .side { display: inline-flex; align-items: center; gap: 6vh; flex: 0 0 auto; }
-  .side img { height: 62vh; width: auto; }
-  .ab { font-weight: 900; font-size: 28vh; letter-spacing: .2vh; }
-  .sc { font-weight: 900; font-size: 34vh; font-variant-numeric: tabular-nums; }
+  a.bar { display: flex; align-items: center; height: 100%; text-decoration: none; color: inherit; gap: 2.5vh; padding: 0 3vh 0 0; }
+  .side { display: inline-flex; align-items: center; gap: 6vh; flex: 0 0 auto; border-bottom: 2.5vh solid transparent; padding: 2vh 2vh 1vh; }
+  .side img { height: 70vh; width: auto; filter: drop-shadow(0 0 3vh rgba(0,0,0,.6)); }
+  .ab { font-weight: 900; font-size: 32vh; letter-spacing: .2vh; }
+  .sc { font-weight: 900; font-size: 44vh; font-variant-numeric: tabular-nums; }
   .loser .ab, .loser .sc { color: var(--muted); }
   .poss { font-size: 20vh; }
   .mid { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0 2vh; line-height: 1.15; }
-  .mid .clk { font-weight: 800; font-size: 20vh; font-variant-numeric: tabular-nums; }
-  .mid .lv { font-size: 13vh; font-weight: 800; color: var(--live); letter-spacing: .3vh; }
+  .mid .clk { font-weight: 800; font-size: 24vh; font-variant-numeric: tabular-nums; }
+  .mid .lv { font-size: 14vh; font-weight: 800; color: var(--live); letter-spacing: .3vh; }
   .mid .lv .dot { display: inline-block; width: 7vh; height: 7vh; border-radius: 50%; background: var(--live); margin-right: 1vh; animation: pulse 1.4s infinite; vertical-align: middle; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
   .info { flex: 1 1 auto; min-width: 0; overflow: hidden; border-left: 1px solid var(--border); padding-left: 2.5vh; }
-  .dd { font-weight: 800; font-size: 19vh; }
+  .dd { font-weight: 800; font-size: 22vh; }
   .dd .at { color: var(--muted); font-weight: 600; }
-  .lp { color: var(--muted); font-size: 16vh; margin-top: 2vh; overflow: hidden; text-overflow: ellipsis; }
+  .lp { color: var(--muted); font-size: 18vh; margin-top: 2vh; overflow: hidden; text-overflow: ellipsis; }
   .lp b { color: var(--text); }
 </style>
 </head>
 <body>
 <a class="bar" id="bar" href="#" target="_top">
+  <span class="brandblock" id="brandBlock">⚡</span>
   <span class="side" id="awaySide"><img alt="" src=""><span class="ab"></span><span class="sc"></span><span class="poss"></span></span>
   <span class="mid" style="padding: 0 4vh;"><span class="lv" id="liveTag"></span><span class="clk" id="clk">&hellip;</span></span>
   <span class="side" id="homeSide"><span class="poss"></span><span class="sc"></span><span class="ab"></span><img alt="" src=""></span>
@@ -48,8 +58,11 @@
   var qs = new URLSearchParams(location.search);
   var eventId = qs.get("event") || "401873285";
   var sbDate = qs.get("date") || null;
-  if (qs.get("theme") === "light") document.body.classList.add("light");
+  var theme = qs.get("theme");
+  if (theme === "light") document.body.classList.add("light");
+  if (theme === "director") document.body.classList.add("director");
   if (qs.get("bg") === "transparent") document.body.classList.add("transparent");
+  if (qs.get("brand")) { var bb = document.getElementById("brandBlock"); bb.textContent = qs.get("brand"); bb.style.display = "flex"; }
   var timer = null;
 
   document.getElementById("bar").href = "gamecast.html?event=" + encodeURIComponent(eventId);
@@ -73,6 +86,7 @@
 
   function side(el, c, myScore, otherScore, over, hasBall, state) {
     var t = c.team || {};
+    el.style.borderBottomColor = t.color ? "#" + t.color : "transparent";
     el.querySelector("img").src = t.logo || get(t, ["logos", 0, "href"], "");
     el.querySelector(".ab").textContent = t.abbreviation || "";
     el.querySelector(".sc").textContent = state === "pre" ? "" : (c.score != null ? c.score : "");
