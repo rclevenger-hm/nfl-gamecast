@@ -55,8 +55,17 @@
 <script>
 (function () {
   "use strict";
-  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var SPORTS = {
+    nfl: { path: "football/nfl", label: "NFL" },
+    mlb: { path: "baseball/mlb", label: "MLB" },
+    nhl: { path: "hockey/nhl", label: "NHL" },
+    mls: { path: "soccer/usa.1", label: "MLS" },
+    epl: { path: "soccer/eng.1", label: "EPL" }
+  };
   var qs = new URLSearchParams(location.search);
+  var sport = (qs.get("sport") || "nfl").toLowerCase();
+  if (!SPORTS[sport]) sport = "nfl";
+  var API = "https://site.api.espn.com/apis/site/v2/sports/" + SPORTS[sport].path;
   var pickedDate = qs.get("date") || null;         // YYYYMMDD; omit = current slate
   var speed = parseFloat(qs.get("speed")) || 90;   // pixels per second
   var theme = qs.get("theme");
@@ -64,7 +73,8 @@
   if (theme === "director") document.body.classList.add("director");
   if (qs.get("bg") === "transparent") document.body.classList.add("transparent");
   var brandEl = document.querySelector(".brand");
-  brandEl.textContent = qs.get("brand") || (theme === "director" ? "⚡ BOLT UP" : "NFL");
+  brandEl.textContent = qs.get("brand") || (theme === "director" ? "⚡ BOLT UP" : SPORTS[sport].label);
+  document.title = SPORTS[sport].label + " Ticker";
   var timer = null;
 
   function esc(s) {
@@ -109,7 +119,7 @@
     else if (st === "post") status = "<span class='st'>" + esc(/OT/.test(detail) ? detail : "FINAL") + "</span>";
     else status = "<span class='st'>" + esc(fmtKick(ev.date)) + "</span>";
 
-    var dateForLink = pickedDate ? "&date=" + pickedDate : "";
+    var dateForLink = (pickedDate ? "&date=" + pickedDate : "") + (sport !== "nfl" ? "&sport=" + sport : "");
     return "<a class='g' href='gamecast.html?event=" + esc(ev.id) + dateForLink + "' target='_top'>" +
       side(away, aS, hS) + "<span class='at'>@</span>" + side(home, hS, aS) + status + "</a>";
   }
