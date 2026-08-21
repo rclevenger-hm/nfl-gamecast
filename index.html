@@ -63,7 +63,8 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="brand">NFL <span>LIVE SCOREBOARD</span></div>
+    <div class="brand"><b id="brandSport">NFL</b> <span>LIVE SCOREBOARD</span></div>
+    <div class="controls" id="sportTabs" style="margin-right:auto;margin-left:14px"></div>
     <div class="controls">
       <button id="btnWeek" class="active" title="Current week's slate">This Week</button>
       <input type="date" id="datePick" title="Jump to a date">
@@ -78,10 +79,35 @@
 <script>
 (function () {
   "use strict";
-  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var SPORTS = {
+    nfl: { path: "football/nfl", label: "NFL" },
+    mlb: { path: "baseball/mlb", label: "MLB" },
+    nhl: { path: "hockey/nhl", label: "NHL" },
+    mls: { path: "soccer/usa.1", label: "MLS" },
+    epl: { path: "soccer/eng.1", label: "EPL" }
+  };
+  var qs = new URLSearchParams(location.search);
+  var sport = (qs.get("sport") || "nfl").toLowerCase();
+  if (!SPORTS[sport]) sport = "nfl";
+  var API = "https://site.api.espn.com/apis/site/v2/sports/" + SPORTS[sport].path;
   var timer = null, countdownTimer = null, nextAt = 0;
 
-  var qs = new URLSearchParams(location.search);
+  document.getElementById("brandSport").textContent = SPORTS[sport].label;
+  document.title = SPORTS[sport].label + " Live Scoreboard";
+  var tabsEl = document.getElementById("sportTabs");
+  Object.keys(SPORTS).forEach(function (k) {
+    var b = document.createElement("button");
+    b.textContent = SPORTS[k].label;
+    if (k === sport) b.className = "active";
+    b.addEventListener("click", function () {
+      var p = new URLSearchParams(location.search);
+      if (k === "nfl") p.delete("sport"); else p.set("sport", k);
+      p.delete("date"); // slates differ per sport
+      location.search = p.toString();
+    });
+    tabsEl.appendChild(b);
+  });
+
   var pickedDate = qs.get("date") || null;   // YYYYMMDD or null = current week
 
   function $(id) { return document.getElementById(id); }
@@ -157,7 +183,7 @@
       foot = esc(get(ev, ["status", "type", "description"], "Final"));
     }
 
-    var dateForLink = pickedDate ? "&date=" + pickedDate : "";
+    var dateForLink = (pickedDate ? "&date=" + pickedDate : "") + (sport !== "nfl" ? "&sport=" + sport : "");
     return "<a class='card' href='gamecast.html?event=" + esc(ev.id) + dateForLink + "'><div class='game'>" +
       "<div class='game-status'>" + statusHtml + "</div>" +
       row(away) + row(home) +
