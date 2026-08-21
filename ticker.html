@@ -8,6 +8,11 @@
   :root { --bg: #0d0f12; --panel: #16191f; --border: #2a2f38; --text: #e8eaed; --muted: #9aa2ad; --accent: #ffcc00; --live: #e33; }
   body.light { --bg: #f2f3f5; --panel: #ffffff; --border: #d5d9df; --text: #17191c; --muted: #5f6773; --accent: #a97e00; }
   body.transparent { --bg: transparent; --border: rgba(128,128,128,.25); }
+  /* "Director" theme — Chargers bolt yellow + electric teal on black */
+  body.director { --bg: #060709; --border: #14333f; --text: #f5f8fa; --muted: #86a3b3; --accent: #ffd400; --live: #ff4040; }
+  body.director .strip { border-top: 1.6vh solid #1fdbe8; border-bottom: 1.6vh solid #1fdbe8; }
+  body.director .brand { background: linear-gradient(135deg, #ffd400 60%, #ffb300); color: #0a1a4d; text-shadow: none; }
+  body.director .st.live { color: #ff5c5c; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
   body {
@@ -27,13 +32,13 @@
     border-right: 1px solid var(--border); text-decoration: none; color: inherit;
   }
   a.g:hover { background: rgba(128,128,128,.12); }
-  .g img { height: 54vh; width: auto; }
-  .t { display: inline-flex; align-items: baseline; gap: 6vh; font-weight: 800; font-size: 27vh; }
+  .g img { height: 60vh; width: auto; }
+  .t { display: inline-flex; align-items: baseline; gap: 6vh; font-weight: 800; font-size: 30vh; }
   .t .ab { letter-spacing: .2vh; }
   .t .sc { font-variant-numeric: tabular-nums; }
   .t.loser { color: var(--muted); }
   .at { color: var(--muted); font-size: 20vh; font-weight: 600; }
-  .st { font-size: 19vh; font-weight: 700; color: var(--muted); margin-left: 1.5vh; }
+  .st { font-size: 21vh; font-weight: 700; color: var(--muted); margin-left: 1.5vh; }
   .st.live { color: var(--live); }
   .st .dot { display: inline-block; width: 8vh; height: 8vh; border-radius: 50%; background: var(--live); margin-right: 1vh; animation: pulse 1.4s infinite; vertical-align: middle; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
@@ -54,8 +59,12 @@
   var qs = new URLSearchParams(location.search);
   var pickedDate = qs.get("date") || null;         // YYYYMMDD; omit = current slate
   var speed = parseFloat(qs.get("speed")) || 90;   // pixels per second
-  if (qs.get("theme") === "light") document.body.classList.add("light");
+  var theme = qs.get("theme");
+  if (theme === "light") document.body.classList.add("light");
+  if (theme === "director") document.body.classList.add("director");
   if (qs.get("bg") === "transparent") document.body.classList.add("transparent");
+  var brandEl = document.querySelector(".brand");
+  brandEl.textContent = qs.get("brand") || (theme === "director" ? "⚡ BOLT UP" : "NFL");
   var timer = null;
 
   function esc(s) {
