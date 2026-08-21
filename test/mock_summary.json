@@ -1,0 +1,94 @@
+{
+  "header": {
+    "competitions": [{
+      "id": "401873285",
+      "status": {"period": 2, "displayClock": "7:42", "type": {"state": "in", "detail": "2nd Quarter", "shortDetail": "7:42 - 2nd"}},
+      "competitors": [
+        {
+          "homeAway": "home",
+          "score": "10",
+          "linescores": [{"displayValue": "7"}, {"displayValue": "3"}],
+          "record": [{"summary": "1-1"}],
+          "team": {"id": "24", "abbreviation": "LAC", "location": "Los Angeles", "name": "Chargers", "displayName": "Los Angeles Chargers", "color": "0080c6", "logos": [{"href": "https://a.espncdn.com/i/teamlogos/nfl/500/lac.png"}]}
+        },
+        {
+          "homeAway": "away",
+          "score": "13",
+          "linescores": [{"displayValue": "10"}, {"displayValue": "3"}],
+          "record": [{"summary": "2-0"}],
+          "team": {"id": "25", "abbreviation": "SF", "location": "San Francisco", "name": "49ers", "displayName": "San Francisco 49ers", "color": "aa0000", "logos": [{"href": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png"}]}
+        }
+      ]
+    }]
+  },
+  "drives": {
+    "current": {
+      "id": "4018732857",
+      "team": {"id": "25", "abbreviation": "SF", "logos": [{"href": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png"}]},
+      "description": "5 plays, 32 yards, 2:11",
+      "plays": [
+        {"id": "p1", "text": "B.Purdy pass short right to G.Kittle for 12 yards", "clock": {"displayValue": "9:53"}, "period": {"number": 2}, "scoringPlay": false, "type": {"text": "Pass Reception"}, "start": {"down": 1, "distance": 10, "yardLine": 45, "shortDownDistanceText": "1st & 10", "downDistanceText": "1st & 10 at SF 45"}, "end": {"down": 1, "distance": 10, "yardLine": 57, "shortDownDistanceText": "1st & 10", "downDistanceText": "1st & 10 at LAC 43", "possessionText": "LAC 43"}},
+        {"id": "p2", "text": "K.Black run up the middle for 6 yards", "clock": {"displayValue": "9:14"}, "period": {"number": 2}, "scoringPlay": false, "type": {"text": "Rush"}, "start": {"down": 1, "distance": 10, "yardLine": 57, "shortDownDistanceText": "1st & 10"}, "end": {"down": 2, "distance": 4, "yardLine": 63, "shortDownDistanceText": "2nd & 4", "downDistanceText": "2nd & 4 at LAC 37", "possessionText": "LAC 37"}}
+      ]
+    },
+    "previous": [
+      {
+        "id": "4018732851",
+        "team": {"id": "25", "abbreviation": "SF", "logos": [{"href": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png"}]},
+        "description": "9 plays, 70 yards, 4:12",
+        "result": "TD",
+        "displayResult": "Touchdown",
+        "plays": [
+          {"id": "p0a", "text": "B.Purdy pass deep left to D.Stribling for 21 yards", "clock": {"displayValue": "12:30"}, "period": {"number": 1}, "scoringPlay": false, "type": {"text": "Pass Reception"}, "start": {"shortDownDistanceText": "2nd & 7"}, "end": {}},
+          {"id": "p0b", "text": "K.Black run left end for 4 yards, TOUCHDOWN.", "clock": {"displayValue": "10:47"}, "period": {"number": 1}, "scoringPlay": true, "awayScore": 7, "homeScore": 0, "type": {"text": "Rushing Touchdown"}, "start": {"shortDownDistanceText": "1st & Goal"}, "end": {}}
+        ]
+      },
+      {
+        "id": "4018732852",
+        "team": {"id": "24", "abbreviation": "LAC", "logos": [{"href": "https://a.espncdn.com/i/teamlogos/nfl/500/lac.png"}]},
+        "description": "10 plays, 75 yards, 5:02",
+        "result": "TD",
+        "displayResult": "Touchdown",
+        "plays": [
+          {"id": "p0c", "text": "T.Lang run up the middle for 2 yards, TOUCHDOWN.", "clock": {"displayValue": "5:45"}, "period": {"number": 1}, "scoringPlay": true, "awayScore": 7, "homeScore": 7, "type": {"text": "Rushing Touchdown"}, "start": {"shortDownDistanceText": "2nd & Goal"}, "end": {}}
+        ]
+      }
+    ]
+  },
+  "scoringPlays": [
+    {"id": "sp1", "team": {"abbreviation": "SF", "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png"}, "period": {"number": 1}, "clock": {"displayValue": "10:47"}, "type": {"text": "Rushing Touchdown"}, "text": "K.Black run left end for 4 yards, TOUCHDOWN. (E.Moody kick good)", "awayScore": 7, "homeScore": 0},
+    {"id": "sp2", "team": {"abbreviation": "LAC", "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/lac.png"}, "period": {"number": 1}, "clock": {"displayValue": "5:45"}, "type": {"text": "Rushing Touchdown"}, "text": "T.Lang run up the middle for 2 yards, TOUCHDOWN. (C.Dicker kick good)", "awayScore": 7, "homeScore": 7},
+    {"id": "sp3", "team": {"abbreviation": "SF", "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png"}, "period": {"number": 2}, "clock": {"displayValue": "11:02"}, "type": {"text": "Field Goal"}, "text": "E.Moody 43 yard field goal is GOOD.", "awayScore": 10, "homeScore": 7}
+  ],
+  "boxscore": {
+    "teams": [
+      {"homeAway": "away", "team": {"id": "25", "abbreviation": "SF"}, "statistics": [
+        {"name": "firstDowns", "label": "1st Downs", "displayValue": "9"},
+        {"name": "totalYards", "label": "Total Yards", "displayValue": "187"},
+        {"name": "netPassingYards", "label": "Passing", "displayValue": "112"},
+        {"name": "rushingYards", "label": "Rushing", "displayValue": "75"},
+        {"name": "turnovers", "label": "Turnovers", "displayValue": "0"},
+        {"name": "possessionTime", "label": "Possession", "displayValue": "14:22"}
+      ]},
+      {"homeAway": "home", "team": {"id": "24", "abbreviation": "LAC"}, "statistics": [
+        {"name": "firstDowns", "label": "1st Downs", "displayValue": "7"},
+        {"name": "totalYards", "label": "Total Yards", "displayValue": "141"},
+        {"name": "netPassingYards", "label": "Passing", "displayValue": "88"},
+        {"name": "rushingYards", "label": "Rushing", "displayValue": "53"},
+        {"name": "turnovers", "label": "Turnovers", "displayValue": "1"},
+        {"name": "possessionTime", "label": "Possession", "displayValue": "12:56"}
+      ]}
+    ]
+  },
+  "leaders": [
+    {"team": {"abbreviation": "SF", "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/sf.png"},
+     "leaders": [
+       {"name": "passingYards", "displayName": "Passing", "leaders": [{"displayValue": "8/11, 96 YDS, 0 TD", "athlete": {"displayName": "Brock Purdy", "headshot": {"href": "https://a.espncdn.com/i/headshots/nfl/players/full/4361741.png"}}}]},
+       {"name": "rushingYards", "displayName": "Rushing", "leaders": [{"displayValue": "10 CAR, 48 YDS, 1 TD", "athlete": {"displayName": "Kaelon Black", "headshot": {"href": ""}}}]}
+     ]},
+    {"team": {"abbreviation": "LAC", "logo": "https://a.espncdn.com/i/teamlogos/nfl/500/lac.png"},
+     "leaders": [
+       {"name": "passingYards", "displayName": "Passing", "leaders": [{"displayValue": "6/9, 74 YDS", "athlete": {"displayName": "Trey Lance", "headshot": {"href": ""}}}]}
+     ]}
+  ]
+}
