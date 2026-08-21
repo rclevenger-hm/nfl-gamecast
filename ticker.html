@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFL Ticker</title>
+<style>
+  :root { --bg: #0d0f12; --panel: #16191f; --border: #2a2f38; --text: #e8eaed; --muted: #9aa2ad; --accent: #ffcc00; --live: #e33; }
+  body.light { --bg: #f2f3f5; --panel: #ffffff; --border: #d5d9df; --text: #17191c; --muted: #5f6773; --accent: #a97e00; }
+  body.transparent { --bg: transparent; --border: rgba(128,128,128,.25); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text); overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .strip { display: flex; align-items: stretch; height: 100%; white-space: nowrap; }
+  .brand {
+    flex: 0 0 auto; display: flex; align-items: center; padding: 0 3vh;
+    background: var(--accent); color: #111; font-weight: 900; font-size: 30vh; letter-spacing: .4vh;
+  }
+  .scroller { flex: 1; overflow: hidden; position: relative; }
+  .track { display: inline-flex; align-items: center; height: 100%; will-change: transform; }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  a.g {
+    display: inline-flex; align-items: center; gap: 5vh; padding: 0 6vh; height: 100%;
+    border-right: 1px solid var(--border); text-decoration: none; color: inherit;
+  }
+  a.g:hover { background: rgba(128,128,128,.12); }
+  .g img { height: 54vh; width: auto; }
+  .t { display: inline-flex; align-items: baseline; gap: 6vh; font-weight: 800; font-size: 27vh; }
+  .t .ab { letter-spacing: .2vh; }
+  .t .sc { font-variant-numeric: tabular-nums; }
+  .t.loser { color: var(--muted); }
+  .at { color: var(--muted); font-size: 20vh; font-weight: 600; }
+  .st { font-size: 19vh; font-weight: 700; color: var(--muted); margin-left: 1.5vh; }
+  .st.live { color: var(--live); }
+  .st .dot { display: inline-block; width: 8vh; height: 8vh; border-radius: 50%; background: var(--live); margin-right: 1vh; animation: pulse 1.4s infinite; vertical-align: middle; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .poss { font-size: 17vh; }
+  .msg { display: flex; align-items: center; height: 100%; padding: 0 4vh; color: var(--muted); font-size: 22vh; }
+</style>
+</head>
+<body>
+<div class="strip">
+  <div class="brand">NFL</div>
+  <div class="scroller"><div class="track" id="track"><div class="msg">loading&hellip;</div></div></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var qs = new URLSearchParams(location.search);
+  var pickedDate = qs.get("date") || null;         // YYYYMMDD; omit = current slate
+  var speed = parseFloat(qs.get("speed")) || 90;   // pixels per second
+  if (qs.get("theme") === "light") document.body.classList.add("light");
+  if (qs.get("bg") === "transparent") document.body.classList.add("transparent");
+  var timer = null;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function get(obj, path, dflt) {
+    try { var cur = obj; for (var i = 0; i < path.length; i++) { if (cur == null) return dflt; cur = cur[path[i]]; } return cur == null ? dflt : cur; }
+    catch (e) { return dflt; }
+  }
+
+  function fmtKick(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  }
+
+  function cell(ev) {
+    var comp = get(ev, ["competitions", 0], {});
+    var comps = comp.competitors || [];
+    var away = comps.find(function (c) { return c.homeAway === "away"; }) || comps[1] || {};
+    var home = comps.find(function (c) { return c.homeAway === "home"; }) || comps[0] || {};
+    var st = get(ev, ["status", "type", "state"], "pre");
+    var detail = get(ev, ["status", "type", "shortDetail"], "");
+    var possId = get(comp, ["situation", "possession"], null);
+    var over = st === "post";
+    var aS = parseInt(away.score, 10), hS = parseInt(home.score, 10);
+
+    function side(c, s, other) {
+      var t = c.team || {};
+      var loser = over && !isNaN(s) && !isNaN(other) && s < other;
+      var ball = st === "in" && possId != null && String(possId) === String(t.id);
+      return "<img src='" + esc(t.logo || get(t, ["logos", 0, "href"], "")) + "' alt='' onerror=\"this.style.visibility='hidden'\">" +
+        "<span class='t" + (loser ? " loser" : "") + "'><span class='ab'>" + esc(t.abbreviation || "") + "</span>" +
+        (st !== "pre" ? "<span class='sc'>" + esc(c.score != null ? c.score : "") + "</span>" : "") +
+        (ball ? "<span class='poss'>🏈</span>" : "") + "</span>";
+    }
+
+    var status;
+    if (st === "in") status = "<span class='st live'><span class='dot'></span>" + esc(detail || "LIVE") + "</span>";
+    else if (st === "post") status = "<span class='st'>" + esc(/OT/.test(detail) ? detail : "FINAL") + "</span>";
+    else status = "<span class='st'>" + esc(fmtKick(ev.date)) + "</span>";
+
+    var dateForLink = pickedDate ? "&date=" + pickedDate : "";
+    return "<a class='g' href='gamecast.html?event=" + esc(ev.id) + dateForLink + "' target='_top'>" +
+      side(away, aS, hS) + "<span class='at'>@</span>" + side(home, hS, aS) + status + "</a>";
+  }
+
+  function render(sb) {
+    var track = document.getElementById("track");
+    var events = (sb.events || []).slice().sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+    if (!events.length) { track.style.animation = "none"; track.innerHTML = "<div class='msg'>No games on this slate</div>"; return false; }
+    var html = events.map(cell).join("");
+    var scroller = track.parentElement;
+    track.style.animation = "none";
+    track.innerHTML = html;
+    // marquee only when content overflows; duplicate content for a seamless loop
+    if (track.scrollWidth > scroller.clientWidth + 2) {
+      var w = track.scrollWidth;
+      track.innerHTML = html + html;
+      track.style.animation = "scroll " + (w / speed) + "s linear infinite";
+    }
+    return events.some(function (ev) { return get(ev, ["status", "type", "state"]) === "in"; });
+  }
+
+  function refresh() {
+    var url = API + "/scoreboard" + (pickedDate ? "?dates=" + pickedDate : "");
+    fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function (sb) {
+      var anyLive = render(sb);
+      schedule(anyLive ? 25000 : 120000);
+    }).catch(function () {
+      document.getElementById("track").innerHTML = "<div class='msg'>Can't reach ESPN — retrying…</div>";
+      schedule(30000);
+    });
+  }
+  function schedule(ms) { clearTimeout(timer); timer = setTimeout(refresh, ms); }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) clearTimeout(timer); else refresh();
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>
