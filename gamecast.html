@@ -68,6 +68,7 @@
     white-space: nowrap;
   }
   .refresh-pill b { color: var(--text); }
+  a.theme-btn { text-decoration: none; display: inline-flex; align-items: center; }
   .theme-btn {
     background: var(--panel2); color: var(--text); border: 1px solid var(--border);
     border-radius: 6px; padding: 4px 8px; font-size: 13px; cursor: pointer; line-height: 1;
@@ -238,6 +239,7 @@
     <div class="brand"><a href="index.html" style="color:inherit;text-decoration:none" title="All games">‹ LIVE <span>GAMECAST</span></a></div>
     <div class="top-controls">
       <select id="gamePicker" title="Switch game"></select>
+      <a class="theme-btn" id="miniLink" href="gamebar.html" title="Minimize to strip scoreboard">🗕 Mini</a>
       <button class="theme-btn" id="themeToggle" title="Day / night mode">☀️</button>
       <div class="refresh-pill" id="refreshPill">connecting…</div>
     </div>
@@ -310,6 +312,15 @@
   var qs = new URLSearchParams(location.search);
   var eventId = qs.get("event") || DEFAULT_EVENT;
   var sbDate  = qs.get("date")  || null;    // derived from the game's own date if absent
+
+  // minimize link -> strip version of the current game
+  (function () {
+    var p = new URLSearchParams();
+    p.set("event", eventId);
+    if (qs.get("theme") === "director") p.set("theme", "director");
+    var ml = document.getElementById("miniLink");
+    if (ml) ml.href = "gamebar.html?" + p.toString();
+  })();
 
   // ESPN groups scoreboard days by US Eastern time; shifting UTC back 6h lands on the right day
   function scoreboardDateFromISO(iso) {
