@@ -1,0 +1,33 @@
+{
+  "events": [
+    {
+      "id": "401873285",
+      "date": "2026-08-21T02:00Z",
+      "status": {"type": {"state": "in", "shortDetail": "7:42 - 2nd"}},
+      "competitions": [{
+        "competitors": [
+          {"homeAway": "home", "score": "10", "team": {"id": "24", "abbreviation": "LAC"}},
+          {"homeAway": "away", "score": "13", "team": {"id": "25", "abbreviation": "SF"}}
+        ],
+        "situation": {
+          "shortDownDistanceText": "2nd & 4",
+          "downDistanceText": "2nd & 4 at LAC 37",
+          "possessionText": "LAC 37",
+          "possession": "25",
+          "lastPlay": {"text": "K.Black run up the middle for 6 yards to the LAC 37."}
+        }
+      }]
+    },
+    {
+      "id": "401873286",
+      "date": "2026-08-21T00:00Z",
+      "status": {"type": {"state": "post", "shortDetail": "Final", "description": "Final"}},
+      "competitions": [{
+        "competitors": [
+          {"homeAway": "home", "score": "17", "team": {"id": "34", "abbreviation": "HOU"}},
+          {"homeAway": "away", "score": "13", "team": {"id": "13", "abbreviation": "LV"}}
+        ]
+      }]
+    }
+  ]
+}
