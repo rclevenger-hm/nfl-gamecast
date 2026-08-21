@@ -304,23 +304,41 @@
 (function () {
   "use strict";
 
-  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var SPORTS = {
+    nfl: { path: "football/nfl", label: "NFL", minPeriods: 4, ot: 4 },
+    mlb: { path: "baseball/mlb", label: "MLB", minPeriods: 9, ot: 99 },
+    nhl: { path: "hockey/nhl", label: "NHL", minPeriods: 3, ot: 3 },
+    mls: { path: "soccer/usa.1", label: "MLS", minPeriods: 0, ot: 2 },
+    epl: { path: "soccer/eng.1", label: "EPL", minPeriods: 0, ot: 2 }
+  };
   var DEFAULT_EVENT = "401873285";          // SF @ LAC — 2026 preseason
   var REFRESH_LIVE_MS = 15000;
   var REFRESH_PRE_MS  = 60000;
 
   var qs = new URLSearchParams(location.search);
-  var eventId = qs.get("event") || DEFAULT_EVENT;
+  var sport = (qs.get("sport") || "nfl").toLowerCase();
+  if (!SPORTS[sport]) sport = "nfl";
+  var API = "https://site.api.espn.com/apis/site/v2/sports/" + SPORTS[sport].path;
+  var eventId = qs.get("event") || (sport === "nfl" ? DEFAULT_EVENT : null);
   var sbDate  = qs.get("date")  || null;    // derived from the game's own date if absent
 
+  // back link + document defaults follow the sport
+  if (sport !== "nfl") {
+    var backA = document.querySelector(".brand a");
+    if (backA) backA.href = "index.html?sport=" + sport;
+  }
+  function sportQS() { return sport !== "nfl" ? "&sport=" + sport : ""; }
+
   // minimize link -> strip version of the current game
-  (function () {
+  function setMiniLink() {
     var p = new URLSearchParams();
-    p.set("event", eventId);
+    if (eventId) p.set("event", eventId);
+    if (sport !== "nfl") p.set("sport", sport);
     if (qs.get("theme") === "director") p.set("theme", "director");
     var ml = document.getElementById("miniLink");
     if (ml) ml.href = "gamebar.html?" + p.toString();
-  })();
+  }
+  setMiniLink();
 
   // ESPN groups scoreboard days by US Eastern time; shifting UTC back 6h lands on the right day
   function scoreboardDateFromISO(iso) {
@@ -357,8 +375,22 @@
     });
   }
 
+  function pickEvent() {
+    // no event given for a non-NFL sport: use the first live game on the slate, else the first game
+    if (eventId) return Promise.resolve();
+    return fetchJSON(API + "/scoreboard").then(function (sb) {
+      var evs = sb.events || [];
+      if (!evs.length) throw new Error("no games on the " + SPORTS[sport].label + " slate right now");
+      var live = evs.find(function (e) { return get(e, ["status", "type", "state"]) === "in"; });
+      eventId = (live || evs[0]).id;
+      setMiniLink();
+    });
+  }
+
   function loadAll() {
-    return fetchJSON(API + "/summary?event=" + encodeURIComponent(eventId)).then(function (summary) {
+    return pickEvent().then(function () {
+      return fetchJSON(API + "/summary?event=" + encodeURIComponent(eventId));
+    }).then(function (summary) {
       var date = sbDate || scoreboardDateFromISO(get(summary, ["header", "competitions", 0, "date"], null));
       var sbUrl = API + "/scoreboard" + (date ? "?dates=" + encodeURIComponent(date) : "");
       return fetchJSON(sbUrl).catch(function () { return null; }).then(function (sb) {
@@ -404,10 +436,11 @@
 
   function renderLinescore(away, home, statusState) {
     var tbl = $("linescore");
-    var periods = Math.max(away.linescores.length, home.linescores.length, statusState === "pre" ? 0 : 4);
+    var minP = SPORTS[sport].minPeriods, otAfter = SPORTS[sport].ot;
+    var periods = Math.max(away.linescores.length, home.linescores.length, statusState === "pre" ? 0 : minP);
     if (!periods) { tbl.innerHTML = ""; return; }
     var head = "<tr><th></th>";
-    for (var i = 0; i < periods; i++) head += "<th>" + (i < 4 ? (i + 1) : "OT" + (periods > 5 ? i - 3 : "")) + "</th>";
+    for (var i = 0; i < periods; i++) head += "<th>" + (i < otAfter ? (i + 1) : "OT" + (periods > otAfter + 1 ? i - otAfter + 1 : "")) + "</th>";
     head += "<th>T</th></tr>";
     function row(t) {
       var r = "<tr><td class='tm'>" + esc(t.abbr) + "</td>";
@@ -506,7 +539,27 @@
     if (Array.isArray(prev)) drives = prev.slice();
     if (cur && (!drives.length || drives[drives.length - 1].id !== cur.id)) drives.push(cur);
     if (!drives.length) {
-      pane.innerHTML = "<div class='notice'>No plays yet — the feed will fill in once the ball is kicked off.</div>";
+      // non-football sports: flat play feed from summary.plays (MLB/NHL) or summary.commentary (soccer)
+      var flat = summary.plays || summary.commentary || [];
+      if (flat.length) {
+        var fhtml = "<div class='drive open'><div class='drive-head'><div class='dh-main'><div class='dh-result'>Play-by-Play</div><div class='dh-desc'>most recent first</div></div></div><div class='plays'>";
+        flat.slice(-120).reverse().forEach(function (p) {
+          var ptext = p.text || get(p, ["type", "text"], "");
+          if (!ptext) return;
+          var meta = [];
+          var per = get(p, ["period", "number"], null);
+          if (per != null) meta.push((sport === "mlb" ? "Inn " : "P") + per);
+          var clk = get(p, ["clock", "displayValue"], get(p, ["time", "displayValue"], ""));
+          if (clk) meta.push(clk);
+          fhtml += "<div class='play" + (p.scoringPlay ? " scoring" : "") + "'>";
+          fhtml += "<div class='pc'>" + esc(meta.join(" ")) + "</div>";
+          fhtml += "<div class='pt'>" + esc(ptext) + (p.scoringPlay && p.awayScore != null ? " <b>(" + esc(p.awayScore) + "–" + esc(p.homeScore) + ")</b>" : "") + "</div></div>";
+        });
+        fhtml += "</div></div>";
+        pane.innerHTML = fhtml;
+        return;
+      }
+      pane.innerHTML = "<div class='notice'>No plays yet — the feed will fill in once the game starts.</div>";
       return;
     }
     drives = drives.slice().reverse(); // latest first
