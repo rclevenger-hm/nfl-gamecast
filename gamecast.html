@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Gamecast — 49ers @ Chargers</title>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --panel: #16191f;
+    --panel2: #1d2128;
+    --border: #2a2f38;
+    --text: #e8eaed;
+    --muted: #9aa2ad;
+    --accent: #ffcc00;
+    --live: #e33;
+    --score-hl: #fff;
+    --away: #aa0000;
+    --home: #0080c6;
+  }
+  body.light {
+    --bg: #f2f3f5; --panel: #ffffff; --panel2: #e9ebee; --border: #d5d9df;
+    --text: #17191c; --muted: #5f6773; --accent: #a97e00; --score-hl: #000;
+  }
+  body.light .play.scoring { background: rgba(169,126,0,.08); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 12px 60px; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 4px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 50;
+  }
+  .brand { font-weight: 800; letter-spacing: 1px; font-size: 14px; }
+  .brand span { color: var(--accent); }
+  .top-controls { display: flex; align-items: center; gap: 8px; }
+  select#gamePicker {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 8px; font-size: 12px; max-width: 240px;
+  }
+  .refresh-pill {
+    font-size: 11px; color: var(--muted); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px;
+    white-space: nowrap;
+  }
+  .refresh-pill b { color: var(--text); }
+  .theme-btn {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 8px; font-size: 13px; cursor: pointer; line-height: 1;
+  }
+
+  /* ---------- score header ---------- */
+  .scorehead {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    align-items: center; gap: 8px;
+    padding: 22px 8px 14px;
+  }
+  .team { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .team.home { flex-direction: row-reverse; text-align: right; }
+  .team img.logo { width: 64px; height: 64px; flex: 0 0 auto; }
+  .team .names { min-width: 0; }
+  .team .city { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .team .nick { font-size: 20px; font-weight: 800; line-height: 1.1; }
+  .team .rec { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .team .score {
+    font-size: 46px; font-weight: 800; font-variant-numeric: tabular-nums;
+    margin-left: auto; padding-left: 10px;
+  }
+  .team.home .score { margin-left: 0; margin-right: auto; padding-left: 0; padding-right: 10px; }
+  .team .score.winning { color: var(--score-hl); }
+  .team .score.losing { color: var(--muted); }
+  .poss { font-size: 15px; }
+
+  .status-block { text-align: center; padding: 0 16px; }
+  .status-live {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 800; font-size: 15px;
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--live);
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .status-detail { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .status-clock { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+  /* ---------- linescore ---------- */
+  table.linescore {
+    width: 100%; max-width: 420px; margin: 0 auto 6px;
+    border-collapse: collapse; font-size: 13px;
+  }
+  table.linescore th, table.linescore td {
+    padding: 4px 10px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  table.linescore th { color: var(--muted); font-weight: 600; font-size: 11px; }
+  table.linescore td.tm { text-align: left; font-weight: 700; }
+  table.linescore td.tot { font-weight: 800; }
+  table.linescore tr + tr td { border-top: 1px solid var(--border); }
+
+  /* ---------- situation / last play ---------- */
+  .situation {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin: 10px 0;
+  }
+  .situation .dd { font-weight: 800; font-size: 15px; }
+  .situation .dd .at { color: var(--muted); font-weight: 600; }
+  .situation .lastplay { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.45; }
+  .situation .lastplay b { color: var(--text); }
+
+  /* ---------- field graphic ---------- */
+  .field {
+    position: relative; height: 46px; border-radius: 8px; overflow: hidden;
+    background: repeating-linear-gradient(90deg, #14532d 0 10%, #166534 10% 20%);
+    border: 1px solid #14532d; margin-top: 10px;
+  }
+  .field .endzone {
+    position: absolute; top: 0; bottom: 0; width: 8.5%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: rgba(255,255,255,.85);
+    letter-spacing: 1px; writing-mode: vertical-rl;
+  }
+  .field .endzone.left { left: 0; }
+  .field .endzone.right { right: 0; transform: rotate(180deg); }
+  .field .ball {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    font-size: 16px; transition: left 1s ease; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  }
+  .field .yardnum {
+    position: absolute; top: 2px; font-size: 8px; color: rgba(255,255,255,.55);
+    transform: translateX(-50%);
+  }
+
+  /* ---------- tabs ---------- */
+  .tabs { display: flex; gap: 4px; margin: 18px 0 12px; border-bottom: 1px solid var(--border); }
+  .tab {
+    background: none; border: none; color: var(--muted); font-weight: 700; font-size: 13px;
+    padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .pane { display: none; }
+  .pane.active { display: block; }
+
+  /* ---------- drives / play feed ---------- */
+  .drive {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 10px; overflow: hidden;
+  }
+  .drive-head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    cursor: pointer; user-select: none;
+  }
+  .drive-head img { width: 26px; height: 26px; }
+  .drive-head .dh-main { flex: 1; min-width: 0; }
+  .drive-head .dh-result { font-weight: 800; font-size: 13px; }
+  .drive-head .dh-result.score-result { color: var(--accent); }
+  .drive-head .dh-desc { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .drive-head .chev { color: var(--muted); font-size: 12px; transition: transform .2s; }
+  .drive.open .chev { transform: rotate(90deg); }
+  .drive .plays { display: none; border-top: 1px solid var(--border); }
+  .drive.open .plays { display: block; }
+  .play { display: flex; gap: 10px; padding: 8px 14px; font-size: 13px; line-height: 1.45; }
+  .play + .play { border-top: 1px solid rgba(255,255,255,.04); }
+  .play .pc { color: var(--muted); font-size: 11px; white-space: nowrap; min-width: 74px; font-variant-numeric: tabular-nums; }
+  .play.scoring { background: rgba(255,204,0,.07); border-left: 3px solid var(--accent); }
+  .play.scoring .pt::before { content: "★ "; color: var(--accent); }
+
+  /* ---------- scoring summary ---------- */
+  .scoreplay { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  .scoreplay img { width: 30px; height: 30px; }
+  .scoreplay .sp-body { flex: 1; font-size: 13px; line-height: 1.45; }
+  .scoreplay .sp-meta { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+  .scoreplay .sp-score { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ---------- box score ---------- */
+  table.stats { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.stats th { color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; padding: 8px 6px; }
+  table.stats th:first-child { text-align: left; }
+  table.stats td { padding: 7px 6px; text-align: center; font-variant-numeric: tabular-nums; border-top: 1px solid var(--border); }
+  table.stats td:first-child { text-align: left; color: var(--muted); }
+
+  /* ---------- leaders ---------- */
+  .leaders-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .leader-col h4 { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 14px 0 6px; }
+  .leader-card {
+    display: flex; align-items: center; gap: 10px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px;
+  }
+  .leader-card img.hs { width: 44px; height: 44px; border-radius: 50%; background: var(--panel2); object-fit: cover; }
+  .leader-card .ln { font-weight: 700; font-size: 13px; }
+  .leader-card .lv { color: var(--muted); font-size: 12px; margin-top: 1px; }
+
+  .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 18px 0 8px; }
+
+  /* ---------- states ---------- */
+  .notice {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 24px; text-align: center; color: var(--muted); margin: 24px 0; line-height: 1.6; font-size: 14px;
+  }
+  .notice b { color: var(--text); }
+  .hidden { display: none !important; }
+
+  @media (max-width: 640px) {
+    .team img.logo { width: 44px; height: 44px; }
+    .team .score { font-size: 32px; }
+    .team .nick { font-size: 15px; }
+    .team .city { display: none; }
+    .leaders-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><a href="index.html" style="color:inherit;text-decoration:none" title="All games">‹ LIVE <span>GAMECAST</span></a></div>
+    <div class="top-controls">
+      <select id="gamePicker" title="Switch game"></select>
+      <button class="theme-btn" id="themeToggle" title="Day / night mode">☀️</button>
+      <div class="refresh-pill" id="refreshPill">connecting…</div>
+    </div>
+  </div>
+
+  <div id="errorBox" class="notice hidden"></div>
+
+  <div id="gameUI" class="hidden">
+    <div class="scorehead">
+      <div class="team away" id="teamAway">
+        <img class="logo" alt="" src="">
+        <div class="names">
+          <div class="city"></div>
+          <div class="nick"></div>
+          <div class="rec"></div>
+        </div>
+        <div class="score">0<span class="poss"></span></div>
+      </div>
+      <div class="status-block">
+        <div class="status-live" id="statusTop"></div>
+        <div class="status-clock" id="statusClock"></div>
+        <div class="status-detail" id="statusDetail"></div>
+      </div>
+      <div class="team home" id="teamHome">
+        <img class="logo" alt="" src="">
+        <div class="names">
+          <div class="city"></div>
+          <div class="nick"></div>
+          <div class="rec"></div>
+        </div>
+        <div class="score">0<span class="poss"></span></div>
+      </div>
+    </div>
+
+    <table class="linescore" id="linescore"></table>
+
+    <div class="situation" id="situationBox">
+      <div class="dd" id="downDistance"></div>
+      <div class="lastplay" id="lastPlay"></div>
+      <div class="field" id="fieldGfx">
+        <div class="endzone left" id="ezLeft"></div>
+        <div class="endzone right" id="ezRight"></div>
+        <div class="ball" id="ballMarker" style="left:50%">🏈</div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-pane="paneFeed">Play-by-Play</button>
+      <button class="tab" data-pane="paneScoring">Scoring</button>
+      <button class="tab" data-pane="paneBox">Box Score</button>
+      <button class="tab" data-pane="paneLeaders">Leaders</button>
+    </div>
+
+    <div class="pane active" id="paneFeed"></div>
+    <div class="pane" id="paneScoring"></div>
+    <div class="pane" id="paneBox"></div>
+    <div class="pane" id="paneLeaders"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var DEFAULT_EVENT = "401873285";          // SF @ LAC — 2026 preseason
+  var REFRESH_LIVE_MS = 15000;
+  var REFRESH_PRE_MS  = 60000;
+
+  var qs = new URLSearchParams(location.search);
+  var eventId = qs.get("event") || DEFAULT_EVENT;
+  var sbDate  = qs.get("date")  || null;    // derived from the game's own date if absent
+
+  // ESPN groups scoreboard days by US Eastern time; shifting UTC back 6h lands on the right day
+  function scoreboardDateFromISO(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return null;
+    d = new Date(d.getTime() - 6 * 3600 * 1000);
+    return d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2, "0") + String(d.getUTCDate()).padStart(2, "0");
+  }
+
+  var timer = null, countdownTimer = null, nextAt = 0, isFinal = false;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function get(obj, path, dflt) {
+    try {
+      var cur = obj;
+      for (var i = 0; i < path.length; i++) {
+        if (cur == null) return dflt;
+        cur = cur[path[i]];
+      }
+      return cur == null ? dflt : cur;
+    } catch (e) { return dflt; }
+  }
+
+  // ---------- data fetch ----------
+  function fetchJSON(url) {
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function loadAll() {
+    return fetchJSON(API + "/summary?event=" + encodeURIComponent(eventId)).then(function (summary) {
+      var date = sbDate || scoreboardDateFromISO(get(summary, ["header", "competitions", 0, "date"], null));
+      var sbUrl = API + "/scoreboard" + (date ? "?dates=" + encodeURIComponent(date) : "");
+      return fetchJSON(sbUrl).catch(function () { return null; }).then(function (sb) {
+        if (date) sbDate = date;
+        return [summary, sb];
+      });
+    });
+  }
+
+  // ---------- render helpers ----------
+  function teamFromCompetitor(c) {
+    var t = c.team || {};
+    var logo = t.logo || get(t, ["logos", 0, "href"], "");
+    return {
+      id: t.id,
+      abbr: t.abbreviation || "",
+      city: t.location || "",
+      nick: t.name || t.shortDisplayName || t.displayName || "",
+      logo: logo,
+      color: t.color ? "#" + t.color : null,
+      score: parseInt(c.score, 10) || 0,
+      record: (function () {
+        var r = c.record || c.records || [];
+        if (Array.isArray(r) && r.length) return r[0].summary || r[0].displayValue || "";
+        return "";
+      })(),
+      linescores: (c.linescores || []).map(function (l) { return l.displayValue != null ? l.displayValue : l.value; }),
+      possession: false
+    };
+  }
+
+  function renderTeam(el, t, otherScore, gameOver) {
+    el.querySelector("img.logo").src = t.logo || "";
+    el.querySelector(".city").textContent = t.city;
+    el.querySelector(".nick").textContent = t.nick || t.abbr;
+    el.querySelector(".rec").textContent = t.record;
+    var scoreEl = el.querySelector(".score");
+    scoreEl.firstChild.nodeValue = t.score;
+    scoreEl.classList.toggle("winning", t.score >= otherScore);
+    scoreEl.classList.toggle("losing", gameOver && t.score < otherScore);
+    el.querySelector(".poss").textContent = t.possession ? " 🏈" : "";
+  }
+
+  function renderLinescore(away, home, statusState) {
+    var tbl = $("linescore");
+    var periods = Math.max(away.linescores.length, home.linescores.length, statusState === "pre" ? 0 : 4);
+    if (!periods) { tbl.innerHTML = ""; return; }
+    var head = "<tr><th></th>";
+    for (var i = 0; i < periods; i++) head += "<th>" + (i < 4 ? (i + 1) : "OT" + (periods > 5 ? i - 3 : "")) + "</th>";
+    head += "<th>T</th></tr>";
+    function row(t) {
+      var r = "<tr><td class='tm'>" + esc(t.abbr) + "</td>";
+      for (var i = 0; i < periods; i++) {
+        r += "<td>" + (t.linescores[i] != null ? esc(t.linescores[i]) : "-") + "</td>";
+      }
+      return r + "<td class='tot'>" + t.score + "</td></tr>";
+    }
+    tbl.innerHTML = head + row(away) + row(home);
+  }
+
+  function renderStatus(status) {
+    var state = get(status, ["type", "state"], "pre");
+    var detail = get(status, ["type", "shortDetail"], get(status, ["type", "detail"], ""));
+    var top = $("statusTop"), clock = $("statusClock"), det = $("statusDetail");
+    if (state === "in") {
+      top.innerHTML = "<span class='live-dot'></span>LIVE";
+      clock.textContent = (status.displayClock || "") + " · Q" + (status.period || "");
+      det.textContent = "";
+    } else if (state === "post") {
+      top.textContent = "";
+      clock.textContent = "FINAL";
+      det.textContent = detail.indexOf("OT") >= 0 ? detail : "";
+      isFinal = true;
+    } else {
+      top.textContent = "";
+      clock.textContent = "PREGAME";
+      det.textContent = detail;
+    }
+    return state;
+  }
+
+  // ---------- situation ----------
+  function renderSituation(sbEvent, summary, away, home) {
+    var box = $("situationBox");
+    var sit = get(sbEvent, ["competitions", 0, "situation"], null);
+    var ddEl = $("downDistance"), lpEl = $("lastPlay");
+    var ddText = "", posText = "", lastPlayText = "", possTeamId = null, yardsToEZ = null;
+
+    if (sit) {
+      ddText = sit.shortDownDistanceText || sit.downDistanceText || "";
+      posText = sit.possessionText || "";
+      lastPlayText = get(sit, ["lastPlay", "text"], "");
+      possTeamId = sit.possession || null;
+    }
+    // fall back to latest play in drives
+    var curDrive = get(summary, ["drives", "current"], null);
+    var lastPlayObj = null;
+    if (curDrive && curDrive.plays && curDrive.plays.length) {
+      lastPlayObj = curDrive.plays[curDrive.plays.length - 1];
+    } else {
+      var prev = get(summary, ["drives", "previous"], []);
+      if (prev.length) {
+        var lastDrive = prev[prev.length - 1];
+        if (lastDrive.plays && lastDrive.plays.length) lastPlayObj = lastDrive.plays[lastDrive.plays.length - 1];
+      }
+    }
+    if (!ddText && lastPlayObj) {
+      ddText = get(lastPlayObj, ["end", "shortDownDistanceText"], get(lastPlayObj, ["end", "downDistanceText"], ""));
+      posText = get(lastPlayObj, ["end", "possessionText"], "");
+    }
+    if (!lastPlayText && lastPlayObj) lastPlayText = lastPlayObj.text || "";
+    if (!possTeamId && curDrive) possTeamId = get(curDrive, ["team", "id"], null);
+
+    away.possession = possTeamId != null && String(possTeamId) === String(away.id);
+    home.possession = possTeamId != null && String(possTeamId) === String(home.id);
+
+    if (!ddText && !lastPlayText) { box.classList.add("hidden"); return; }
+    box.classList.remove("hidden");
+    ddEl.innerHTML = esc(ddText) + (posText ? " <span class='at'>at " + esc(posText) + "</span>" : "");
+    lpEl.innerHTML = lastPlayText ? "<b>Last play:</b> " + esc(lastPlayText) : "";
+
+    // field graphic: yardLine 0-100 measured from away end zone in ESPN coords
+    var yl = get(lastPlayObj, ["end", "yardLine"], null);
+    $("ezLeft").textContent = away.abbr;
+    $("ezRight").textContent = home.abbr;
+    $("ezLeft").style.background = away.color || "#333";
+    $("ezRight").style.background = home.color || "#333";
+    if (yl != null && yl >= 0 && yl <= 100) {
+      // map 0..100 to the 8.5%..91.5% playing field
+      var pct = 8.5 + (yl / 100) * 83;
+      $("ballMarker").style.left = pct + "%";
+      $("ballMarker").classList.remove("hidden");
+    } else {
+      $("ballMarker").classList.add("hidden");
+    }
+  }
+
+  // ---------- play feed ----------
+  var openDrives = {};  // remember which accordions user opened
+  function renderFeed(summary, away, home) {
+    var pane = $("paneFeed");
+    var drives = [];
+    var cur = get(summary, ["drives", "current"], null);
+    var prev = get(summary, ["drives", "previous"], []);
+    if (Array.isArray(prev)) drives = prev.slice();
+    if (cur && (!drives.length || drives[drives.length - 1].id !== cur.id)) drives.push(cur);
+    if (!drives.length) {
+      pane.innerHTML = "<div class='notice'>No plays yet — the feed will fill in once the ball is kicked off.</div>";
+      return;
+    }
+    drives = drives.slice().reverse(); // latest first
+    var html = "";
+    drives.forEach(function (d, idx) {
+      var did = d.id || ("d" + idx);
+      var isCurrent = cur && d.id === cur.id;
+      var open = isCurrent || openDrives[did];
+      var logo = get(d, ["team", "logos", 0, "href"], "");
+      var result = d.displayResult || d.result || (isCurrent ? "Drive in progress" : "");
+      var isScore = /touchdown|field goal|td|fg/i.test(String(d.result || d.displayResult || "")) && !/missed|no good/i.test(String(d.displayResult || ""));
+      var plays = (d.plays || []).slice().reverse();
+      html += "<div class='drive" + (open ? " open" : "") + "' data-did='" + esc(did) + "'>";
+      html += "<div class='drive-head'>";
+      html += logo ? "<img src='" + esc(logo) + "' alt=''>" : "";
+      html += "<div class='dh-main'><div class='dh-result" + (isScore ? " score-result" : "") + "'>" + esc(result) + (isCurrent ? " · <span style='color:var(--live)'>current</span>" : "") + "</div>";
+      html += "<div class='dh-desc'>" + esc(d.description || "") + "</div></div>";
+      html += "<div class='chev'>▶</div></div>";
+      html += "<div class='plays'>";
+      plays.forEach(function (p) {
+        var clock = get(p, ["clock", "displayValue"], "");
+        var period = get(p, ["period", "number"], "");
+        var dd = get(p, ["start", "shortDownDistanceText"], get(p, ["start", "downDistanceText"], ""));
+        html += "<div class='play" + (p.scoringPlay ? " scoring" : "") + "'>";
+        html += "<div class='pc'>Q" + esc(period) + " " + esc(clock) + (dd ? "<br>" + esc(dd) : "") + "</div>";
+        html += "<div class='pt'>" + esc(p.text || "") + (p.scoringPlay ? " <b>(" + esc(get(p, ["awayScore"], "")) + "–" + esc(get(p, ["homeScore"], "")) + ")</b>" : "") + "</div>";
+        html += "</div>";
+      });
+      html += "</div></div>";
+    });
+    pane.innerHTML = html;
+    pane.querySelectorAll(".drive-head").forEach(function (h) {
+      h.addEventListener("click", function () {
+        var d = h.parentElement;
+        d.classList.toggle("open");
+        openDrives[d.getAttribute("data-did")] = d.classList.contains("open");
+      });
+    });
+  }
+
+  // ---------- scoring summary ----------
+  function renderScoring(summary) {
+    var pane = $("paneScoring");
+    var sp = summary.scoringPlays || [];
+    if (!sp.length) { pane.innerHTML = "<div class='notice'>No scoring plays yet.</div>"; return; }
+    var html = "";
+    sp.slice().reverse().forEach(function (p) {
+      var logo = get(p, ["team", "logo"], get(p, ["team", "logos", 0, "href"], ""));
+      html += "<div class='scoreplay'>";
+      html += logo ? "<img src='" + esc(logo) + "' alt=''>" : "";
+      html += "<div class='sp-body'><div class='sp-meta'>Q" + esc(get(p, ["period", "number"], "")) + " · " + esc(get(p, ["clock", "displayValue"], "")) + " · " + esc(get(p, ["type", "text"], get(p, ["scoringType", "displayName"], ""))) + "</div>";
+      html += esc(p.text || "") + "</div>";
+      html += "<div class='sp-score'>" + esc(p.awayScore) + "–" + esc(p.homeScore) + "</div>";
+      html += "</div>";
+    });
+    pane.innerHTML = html;
+  }
+
+  // ---------- box score ----------
+  function renderBox(summary, away, home) {
+    var pane = $("paneBox");
+    var teams = get(summary, ["boxscore", "teams"], []);
+    if (!teams.length) { pane.innerHTML = "<div class='notice'>Box score not available yet.</div>"; return; }
+    var awayT = teams.find(function (t) { return get(t, ["team", "id"]) === away.id || t.homeAway === "away"; }) || teams[0];
+    var homeT = teams.find(function (t) { return t !== awayT; }) || teams[1] || teams[0];
+    var labels = {};
+    (awayT.statistics || []).forEach(function (s) { labels[s.name] = s.label || s.name; });
+    (homeT.statistics || []).forEach(function (s) { if (!labels[s.name]) labels[s.name] = s.label || s.name; });
+    function val(t, name) {
+      var s = (t.statistics || []).find(function (x) { return x.name === name; });
+      return s ? s.displayValue : "-";
+    }
+    var html = "<table class='stats'><tr><th>Team Stats</th><th>" + esc(get(awayT, ["team", "abbreviation"], away.abbr)) + "</th><th>" + esc(get(homeT, ["team", "abbreviation"], home.abbr)) + "</th></tr>";
+    Object.keys(labels).forEach(function (name) {
+      html += "<tr><td>" + esc(labels[name]) + "</td><td>" + esc(val(awayT, name)) + "</td><td>" + esc(val(homeT, name)) + "</td></tr>";
+    });
+    html += "</table>";
+    pane.innerHTML = html;
+  }
+
+  // ---------- leaders ----------
+  function renderLeaders(summary) {
+    var pane = $("paneLeaders");
+    var leaders = summary.leaders || [];
+    if (!leaders.length) { pane.innerHTML = "<div class='notice'>Leaders not available yet.</div>"; return; }
+    var html = "<div class='leaders-grid'>";
+    leaders.forEach(function (tl) {
+      var abbr = get(tl, ["team", "abbreviation"], "");
+      var logo = get(tl, ["team", "logo"], get(tl, ["team", "logos", 0, "href"], ""));
+      html += "<div class='leader-col'><h4>" + (logo ? "<img src='" + esc(logo) + "' style='width:16px;height:16px;vertical-align:-3px'> " : "") + esc(abbr) + "</h4>";
+      (tl.leaders || []).forEach(function (cat) {
+        var top = get(cat, ["leaders", 0], null);
+        if (!top) return;
+        var a = top.athlete || {};
+        html += "<div class='leader-card'>";
+        html += "<img class='hs' src='" + esc(get(a, ["headshot", "href"], "")) + "' alt='' onerror=\"this.style.visibility='hidden'\">";
+        html += "<div><div class='ln'>" + esc(a.displayName || a.shortName || "") + " <span style='color:var(--muted);font-weight:400'>· " + esc(cat.displayName || cat.name || "") + "</span></div>";
+        html += "<div class='lv'>" + esc(top.displayValue || "") + "</div></div></div>";
+      });
+      html += "</div>";
+    });
+    html += "</div>";
+    pane.innerHTML = html;
+  }
+
+  // ---------- game picker ----------
+  function renderPicker(sb) {
+    var sel = $("gamePicker");
+    var events = get(sb, ["events"], []);
+    if (!events.length) { sel.classList.add("hidden"); return; }
+    sel.classList.remove("hidden");
+    sel.innerHTML = "";
+    events.forEach(function (ev) {
+      var opt = document.createElement("option");
+      opt.value = ev.id;
+      var st = get(ev, ["status", "type", "state"], "pre");
+      var comp = get(ev, ["competitions", 0, "competitors"], []);
+      var awayC = comp.find(function (c) { return c.homeAway === "away"; }) || comp[1] || {};
+      var homeC = comp.find(function (c) { return c.homeAway === "home"; }) || comp[0] || {};
+      var label = get(awayC, ["team", "abbreviation"], "?") + " @ " + get(homeC, ["team", "abbreviation"], "?");
+      if (st === "in") label += "  (" + (awayC.score || 0) + "–" + (homeC.score || 0) + " live)";
+      else if (st === "post") label += "  (final)";
+      opt.textContent = label;
+      if (String(ev.id) === String(eventId)) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = function () {
+      var p = new URLSearchParams(location.search);
+      p.set("event", sel.value);
+      if (sbDate) p.set("date", sbDate);
+      location.search = p.toString();
+    };
+  }
+
+  // ---------- main refresh loop ----------
+  function refresh() {
+    loadAll().then(function (res) {
+      var summary = res[0], sb = res[1];
+      $("errorBox").classList.add("hidden");
+      $("gameUI").classList.remove("hidden");
+
+      var comp = get(summary, ["header", "competitions", 0], {});
+      var competitors = comp.competitors || [];
+      var awayC = competitors.find(function (c) { return c.homeAway === "away"; }) || competitors[1] || {};
+      var homeC = competitors.find(function (c) { return c.homeAway === "home"; }) || competitors[0] || {};
+      var away = teamFromCompetitor(awayC);
+      var home = teamFromCompetitor(homeC);
+      var status = comp.status || get(summary, ["header", "competitions", 0, "status"], {});
+      var state = renderStatus(status);
+      document.title = away.abbr + " " + away.score + "–" + home.score + " " + home.abbr +
+        (state === "in" ? " · Q" + (status.period || "") + " " + (status.displayClock || "") : state === "post" ? " · Final" : "") + " — Live Gamecast";
+
+      var sbEvent = null;
+      if (sb) {
+        sbEvent = (sb.events || []).find(function (ev) { return String(ev.id) === String(eventId); }) || null;
+        renderPicker(sb);
+      }
+      renderSituation(sbEvent, summary, away, home);   // sets possession flags
+      renderTeam($("teamAway"), away, home.score, state === "post");
+      renderTeam($("teamHome"), home, away.score, state === "post");
+      renderLinescore(away, home, state);
+      renderFeed(summary, away, home);
+      renderScoring(summary);
+      renderBox(summary, away, home);
+      renderLeaders(summary);
+      if (state !== "in") $("situationBox").querySelector(".field").classList.toggle("hidden", state === "post");
+
+      schedule(state === "in" ? REFRESH_LIVE_MS : state === "pre" ? REFRESH_PRE_MS : 0);
+    }).catch(function (err) {
+      var box = $("errorBox");
+      box.classList.remove("hidden");
+      box.innerHTML = "<b>Couldn't reach ESPN's data feed.</b><br>" +
+        "If you're viewing this inside a sandboxed preview, the network is blocked — " +
+        "<b>download this file and open it in your browser</b> (Chrome, Edge, Safari, Firefox) and it will connect.<br>" +
+        "<span style='font-size:12px'>(" + esc(err.message) + " — retrying in 30s)</span>";
+      schedule(30000);
+    });
+  }
+
+  function schedule(ms) {
+    clearTimeout(timer);
+    clearInterval(countdownTimer);
+    var pill = $("refreshPill");
+    if (!ms) { pill.innerHTML = "<b>Final</b> — auto-refresh stopped"; return; }
+    nextAt = Date.now() + ms;
+    timer = setTimeout(refresh, ms);
+    countdownTimer = setInterval(function () {
+      var s = Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
+      pill.innerHTML = "updates in <b>" + s + "s</b>";
+    }, 500);
+    pill.innerHTML = "updates in <b>" + Math.ceil(ms / 1000) + "s</b>";
+  }
+
+  // pause polling while tab hidden; refresh immediately when it returns
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { clearTimeout(timer); clearInterval(countdownTimer); }
+    else if (!isFinal) refresh();
+  });
+
+  // day / night mode (remembered per browser)
+  (function () {
+    var mode = null;
+    try { mode = localStorage.getItem("gc-theme"); } catch (e) {}
+    if (!mode) mode = (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+    var btn = $("themeToggle");
+    function apply(m) {
+      document.body.classList.toggle("light", m === "light");
+      btn.textContent = m === "light" ? "🌙" : "☀️";
+    }
+    apply(mode);
+    btn.addEventListener("click", function () {
+      mode = mode === "light" ? "dark" : "light";
+      try { localStorage.setItem("gc-theme", mode); } catch (e) {}
+      apply(mode);
+    });
+  })();
+
+  // tabs
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.addEventListener("click", function () {
+      document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("active"); });
+      document.querySelectorAll(".pane").forEach(function (x) { x.classList.remove("active"); });
+      t.classList.add("active");
+      $(t.getAttribute("data-pane")).classList.add("active");
+    });
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
