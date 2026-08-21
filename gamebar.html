@@ -35,11 +35,27 @@
   .mid .lv { font-size: 14vh; font-weight: 800; color: var(--live); letter-spacing: .3vh; }
   .mid .lv .dot { display: inline-block; width: 7vh; height: 7vh; border-radius: 50%; background: var(--live); margin-right: 1vh; animation: pulse 1.4s infinite; vertical-align: middle; }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-  .info { flex: 1 1 auto; min-width: 0; overflow: hidden; border-left: 1px solid var(--border); padding-left: 2.5vh; }
-  .dd { font-weight: 800; font-size: 22vh; }
+  .info { flex: 1 1 auto; min-width: 0; overflow: hidden; border-left: 1px solid var(--border); padding-left: 2.5vh; align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+  .dd { font-weight: 800; font-size: 20vh; }
   .dd .at { color: var(--muted); font-weight: 600; }
-  .lp { color: var(--muted); font-size: 18vh; margin-top: 2vh; overflow: hidden; text-overflow: ellipsis; }
+  .lp { color: var(--muted); font-size: 16vh; margin-top: 1.5vh; overflow: hidden; text-overflow: ellipsis; }
   .lp b { color: var(--text); }
+  .field {
+    position: relative; height: 26vh; border-radius: 2.5vh; overflow: hidden; margin: 2vh 0 0;
+    background: repeating-linear-gradient(90deg, #14532d 0 10%, #166534 10% 20%);
+    border: 1px solid #14532d; display: none;
+  }
+  .field .endzone {
+    position: absolute; top: 0; bottom: 0; width: 6%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10vh; font-weight: 800; color: rgba(255,255,255,.9); letter-spacing: .3vh;
+  }
+  .field .endzone.left { left: 0; }
+  .field .endzone.right { right: 0; }
+  .field .ball {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    font-size: 17vh; transition: left 1s ease; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  }
 </style>
 </head>
 <body>
@@ -48,7 +64,11 @@
   <span class="side" id="awaySide"><img alt="" src=""><span class="ab"></span><span class="sc"></span><span class="poss"></span></span>
   <span class="mid" style="padding: 0 4vh;"><span class="lv" id="liveTag"></span><span class="clk" id="clk">&hellip;</span></span>
   <span class="side" id="homeSide"><span class="poss"></span><span class="sc"></span><span class="ab"></span><img alt="" src=""></span>
-  <span class="info"><span class="dd" id="dd"></span><div class="lp" id="lp"></div></span>
+  <span class="info">
+    <span class="dd" id="dd"></span>
+    <span class="field" id="fieldGfx"><span class="endzone left" id="ezLeft"></span><span class="endzone right" id="ezRight"></span><span class="ball" id="ballMarker" style="left:50%">🏈</span></span>
+    <div class="lp" id="lp"></div>
+  </span>
 </a>
 
 <script>
@@ -144,6 +164,30 @@
       dd.innerHTML = ddText ? ddText + (posText ? " <span class='at'>at " + posText + "</span>" : "") : "";
       dd.style.display = state === "in" && ddText ? "" : "none";
       lp.innerHTML = lastPlay && !over ? "<b>Last:</b> " + lastPlay.replace(/[<>]/g, "") : "";
+
+      // field position graphic (yardLine 0-100 from the away end zone, per ESPN coords)
+      var lastPlayObj = null;
+      var curPlays = get(summary, ["drives", "current", "plays"], []);
+      if (curPlays.length) lastPlayObj = curPlays[curPlays.length - 1];
+      else {
+        var prevDrives = get(summary, ["drives", "previous"], []);
+        if (prevDrives.length) {
+          var lastPrev = prevDrives[prevDrives.length - 1];
+          if (lastPrev.plays && lastPrev.plays.length) lastPlayObj = lastPrev.plays[lastPrev.plays.length - 1];
+        }
+      }
+      var yl = get(lastPlayObj, ["end", "yardLine"], null);
+      var fld = document.getElementById("fieldGfx");
+      if (state === "in" && yl != null && yl >= 0 && yl <= 100) {
+        fld.style.display = "block";
+        document.getElementById("ezLeft").textContent = get(away, ["team", "abbreviation"], "");
+        document.getElementById("ezRight").textContent = get(home, ["team", "abbreviation"], "");
+        document.getElementById("ezLeft").style.background = get(away, ["team", "color"], null) ? "#" + away.team.color : "#333";
+        document.getElementById("ezRight").style.background = get(home, ["team", "color"], null) ? "#" + home.team.color : "#333";
+        document.getElementById("ballMarker").style.left = (6 + (yl / 100) * 88) + "%";
+      } else {
+        fld.style.display = "none";
+      }
       document.title = (get(away, ["team", "abbreviation"], "") || "?") + " " + (isNaN(aS) ? "" : aS) + "–" + (isNaN(hS) ? "" : hS) + " " + (get(home, ["team", "abbreviation"], "") || "?");
 
       schedule(state === "in" ? 15000 : over ? 0 : 60000);
