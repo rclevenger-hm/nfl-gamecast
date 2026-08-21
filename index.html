@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFL Live Scoreboard</title>
+<style>
+  :root {
+    --bg: #0d0f12; --panel: #16191f; --panel2: #1d2128; --border: #2a2f38;
+    --text: #e8eaed; --muted: #9aa2ad; --accent: #ffcc00; --live: #e33;
+  }
+  body.light {
+    --bg: #f2f3f5; --panel: #ffffff; --panel2: #e9ebee; --border: #d5d9df;
+    --text: #17191c; --muted: #5f6773; --accent: #a97e00;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; min-height: 100vh; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 12px 60px; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    padding: 12px 4px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 50;
+  }
+  .brand { font-weight: 800; letter-spacing: 1px; font-size: 15px; }
+  .brand span { color: var(--accent); }
+  .controls { display: flex; align-items: center; gap: 8px; }
+  .controls input[type=date], .controls button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  }
+  .controls button.active { border-color: var(--accent); color: var(--accent); }
+  .refresh-pill { font-size: 11px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+  .refresh-pill b { color: var(--text); }
+  .daylabel { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin: 18px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  a.card { text-decoration: none; color: inherit; display: block; }
+  .game {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; transition: border-color .15s, transform .15s; height: 100%;
+  }
+  a.card:hover .game { border-color: var(--accent); transform: translateY(-1px); }
+  .game-status { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; margin-bottom: 10px; }
+  .game-status .live { color: var(--live); display: inline-flex; align-items: center; gap: 5px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .game-status .sched { color: var(--muted); font-weight: 600; }
+  .game-status .final { color: var(--text); }
+  .game-status .odds { margin-left: auto; color: var(--muted); font-weight: 600; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+  .row img { width: 30px; height: 30px; }
+  .row .nm { font-weight: 700; font-size: 14px; }
+  .row .rec { color: var(--muted); font-size: 11px; margin-left: 4px; font-weight: 400; }
+  .row .sc { margin-left: auto; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .row.loser .nm, .row.loser .sc { color: var(--muted); }
+  .row .poss { font-size: 12px; }
+  .game-foot { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.4; min-height: 18px; }
+  .game-foot b { color: var(--text); }
+  .notice { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 28px; text-align: center; color: var(--muted); margin: 24px 0; line-height: 1.6; font-size: 14px; }
+  .notice b { color: var(--text); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">NFL <span>LIVE SCOREBOARD</span></div>
+    <div class="controls">
+      <button id="btnWeek" class="active" title="Current week's slate">This Week</button>
+      <input type="date" id="datePick" title="Jump to a date">
+      <button id="themeToggle" title="Day / night mode">☀️</button>
+      <div class="refresh-pill" id="refreshPill">loading…</div>
+    </div>
+  </div>
+  <div id="errorBox" class="notice hidden"></div>
+  <div id="board"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var timer = null, countdownTimer = null, nextAt = 0;
+
+  var qs = new URLSearchParams(location.search);
+  var pickedDate = qs.get("date") || null;   // YYYYMMDD or null = current week
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function get(obj, path, dflt) {
+    try { var cur = obj; for (var i = 0; i < path.length; i++) { if (cur == null) return dflt; cur = cur[path[i]]; } return cur == null ? dflt : cur; }
+    catch (e) { return dflt; }
+  }
+
+  function load() {
+    var url = API + "/scoreboard" + (pickedDate ? "?dates=" + pickedDate : "");
+    return fetch(url, { cache: "no-store" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function fmtKick(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return "";
+    return d.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+
+  function card(ev) {
+    var comp = get(ev, ["competitions", 0], {});
+    var comps = comp.competitors || [];
+    var away = comps.find(function (c) { return c.homeAway === "away"; }) || comps[1] || {};
+    var home = comps.find(function (c) { return c.homeAway === "home"; }) || comps[0] || {};
+    var st = get(ev, ["status", "type", "state"], "pre");
+    var detail = get(ev, ["status", "type", "shortDetail"], "");
+    var sit = comp.situation || null;
+    var possId = sit ? sit.possession : null;
+    var over = st === "post";
+
+    function row(c) {
+      var t = c.team || {};
+      var score = c.score != null ? c.score : "";
+      var winner = over && comps.length === 2 && parseInt(c.score, 10) > parseInt((c === away ? home : away).score, 10);
+      var loser = over && !winner && parseInt(c.score, 10) !== parseInt((c === away ? home : away).score, 10);
+      var rec = "";
+      var recs = c.records || [];
+      if (recs.length) rec = recs[0].summary || "";
+      var hasBall = possId != null && String(possId) === String(t.id);
+      return "<div class='row" + (loser ? " loser" : "") + "'>" +
+        "<img src='" + esc(t.logo || get(t, ["logos", 0, "href"], "")) + "' alt='' onerror=\"this.style.visibility='hidden'\">" +
+        "<div class='nm'>" + esc(t.shortDisplayName || t.name || t.abbreviation || "") +
+        (rec ? "<span class='rec'>(" + esc(rec) + ")</span>" : "") + (hasBall ? " <span class='poss'>🏈</span>" : "") + "</div>" +
+        "<div class='sc'>" + (st === "pre" ? "" : esc(score)) + "</div></div>";
+    }
+
+    var statusHtml;
+    if (st === "in") statusHtml = "<span class='live'><span class='live-dot'></span>" + esc(detail || "LIVE") + "</span>";
+    else if (st === "post") statusHtml = "<span class='final'>" + esc(detail || "FINAL") + "</span>";
+    else statusHtml = "<span class='sched'>" + esc(fmtKick(ev.date)) + "</span>";
+
+    var broadcast = get(comp, ["broadcasts", 0, "names", 0], get(comp, ["broadcast"], ""));
+    if (Array.isArray(broadcast)) broadcast = broadcast[0] || "";
+
+    var foot = "";
+    if (st === "in" && sit) {
+      var dd = sit.shortDownDistanceText || sit.downDistanceText || "";
+      var lp = get(sit, ["lastPlay", "text"], "");
+      foot = (dd ? "<b>" + esc(dd) + (sit.possessionText ? " at " + esc(sit.possessionText) : "") + "</b>" : "") +
+             (lp ? (dd ? " · " : "") + esc(lp) : "");
+    } else if (st === "pre") {
+      foot = esc(get(comp, ["venue", "fullName"], "")) + (broadcast ? " · " + esc(broadcast) : "");
+    } else if (st === "post") {
+      var winRow = parseInt(away.score, 10) > parseInt(home.score, 10) ? away : home;
+      foot = esc(get(ev, ["status", "type", "description"], "Final"));
+    }
+
+    var dateForLink = pickedDate ? "&date=" + pickedDate : "";
+    return "<a class='card' href='gamecast.html?event=" + esc(ev.id) + dateForLink + "'><div class='game'>" +
+      "<div class='game-status'>" + statusHtml + "</div>" +
+      row(away) + row(home) +
+      "<div class='game-foot'>" + foot + "</div>" +
+      "</div></a>";
+  }
+
+  function render(sb) {
+    var board = $("board");
+    var events = (sb.events || []).slice();
+    var weekNum = get(sb, ["week", "number"], null);
+    var seasonType = get(sb, ["leagues", 0, "season", "type", "name"], "");
+    if (!events.length) {
+      board.innerHTML = "<div class='notice'>No games on this slate. Try another date.</div>";
+      return false;
+    }
+    // group by local day
+    events.sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
+    var groups = {}, order = [];
+    events.forEach(function (ev) {
+      var d = new Date(ev.date);
+      var key = isNaN(d) ? "TBD" : d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(ev);
+    });
+    var html = "";
+    var label = weekNum != null ? esc(seasonType ? seasonType + " · Week " + weekNum : "Week " + weekNum) : "";
+    order.forEach(function (day) {
+      html += "<div class='daylabel'>" + esc(day) + (label ? " <span style='font-weight:400'>· " + label + "</span>" : "") + "</div>";
+      html += "<div class='grid'>" + groups[day].map(card).join("") + "</div>";
+    });
+    board.innerHTML = html;
+    return events.some(function (ev) { return get(ev, ["status", "type", "state"]) === "in"; });
+  }
+
+  function refresh() {
+    load().then(function (sb) {
+      $("errorBox").classList.add("hidden");
+      var anyLive = render(sb);
+      schedule(anyLive ? 20000 : 120000);
+    }).catch(function (err) {
+      var box = $("errorBox");
+      box.classList.remove("hidden");
+      box.innerHTML = "<b>Couldn't reach ESPN's data feed.</b><br>If you're viewing this inside a sandboxed preview, the network is blocked — open the page in a normal browser tab and it will connect.<br><span style='font-size:12px'>(" + esc(err.message) + " — retrying in 30s)</span>";
+      schedule(30000);
+    });
+  }
+
+  function schedule(ms) {
+    clearTimeout(timer); clearInterval(countdownTimer);
+    nextAt = Date.now() + ms;
+    timer = setTimeout(refresh, ms);
+    var pill = $("refreshPill");
+    countdownTimer = setInterval(function () {
+      var s = Math.max(0, Math.ceil((nextAt - Date.now()) / 1000));
+      pill.innerHTML = "updates in <b>" + s + "s</b>";
+    }, 500);
+    pill.innerHTML = "updates in <b>" + Math.ceil(ms / 1000) + "s</b>";
+  }
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { clearTimeout(timer); clearInterval(countdownTimer); }
+    else refresh();
+  });
+
+  // controls
+  var dp = $("datePick");
+  if (pickedDate && /^\d{8}$/.test(pickedDate)) {
+    dp.value = pickedDate.slice(0, 4) + "-" + pickedDate.slice(4, 6) + "-" + pickedDate.slice(6, 8);
+    $("btnWeek").classList.remove("active");
+  }
+  dp.addEventListener("change", function () {
+    if (!dp.value) return;
+    var p = new URLSearchParams(location.search);
+    p.set("date", dp.value.replace(/-/g, ""));
+    location.search = p.toString();
+  });
+  $("btnWeek").addEventListener("click", function () {
+    var p = new URLSearchParams(location.search);
+    p.delete("date");
+    location.search = p.toString();
+  });
+
+  // day / night mode (remembered per browser)
+  (function () {
+    var mode = null;
+    try { mode = localStorage.getItem("gc-theme"); } catch (e) {}
+    if (!mode) mode = (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+    var btn = $("themeToggle");
+    function apply(m) {
+      document.body.classList.toggle("light", m === "light");
+      btn.textContent = m === "light" ? "🌙" : "☀️";
+    }
+    apply(mode);
+    btn.addEventListener("click", function () {
+      mode = mode === "light" ? "dark" : "light";
+      try { localStorage.setItem("gc-theme", mode); } catch (e) {}
+      apply(mode);
+    });
+  })();
+
+  refresh();
+})();
+</script>
+</body>
+</html>
