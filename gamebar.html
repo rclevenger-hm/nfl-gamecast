@@ -74,9 +74,18 @@
 <script>
 (function () {
   "use strict";
-  var API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+  var SPORTS = {
+    nfl: { path: "football/nfl", label: "NFL" },
+    mlb: { path: "baseball/mlb", label: "MLB" },
+    nhl: { path: "hockey/nhl", label: "NHL" },
+    mls: { path: "soccer/usa.1", label: "MLS" },
+    epl: { path: "soccer/eng.1", label: "EPL" }
+  };
   var qs = new URLSearchParams(location.search);
-  var eventId = qs.get("event") || "401873285";
+  var sport = (qs.get("sport") || "nfl").toLowerCase();
+  if (!SPORTS[sport]) sport = "nfl";
+  var API = "https://site.api.espn.com/apis/site/v2/sports/" + SPORTS[sport].path;
+  var eventId = qs.get("event") || (sport === "nfl" ? "401873285" : null);
   var sbDate = qs.get("date") || null;
   var theme = qs.get("theme");
   if (theme === "light") document.body.classList.add("light");
@@ -85,7 +94,11 @@
   if (qs.get("brand")) { var bb = document.getElementById("brandBlock"); bb.textContent = qs.get("brand"); bb.style.display = "flex"; }
   var timer = null;
 
-  document.getElementById("bar").href = "gamecast.html?event=" + encodeURIComponent(eventId);
+  function setBarLink() {
+    document.getElementById("bar").href = "gamecast.html?event=" + encodeURIComponent(eventId || "") +
+      (sport !== "nfl" ? "&sport=" + sport : "") + (qs.get("theme") === "director" ? "&theme=director" : "");
+  }
+  setBarLink();
 
   function get(obj, path, dflt) {
     try { var cur = obj; for (var i = 0; i < path.length; i++) { if (cur == null) return dflt; cur = cur[path[i]]; } return cur == null ? dflt : cur; }
@@ -114,8 +127,21 @@
     el.classList.toggle("loser", over && !isNaN(myScore) && !isNaN(otherScore) && myScore < otherScore);
   }
 
+  function pickEvent() {
+    if (eventId) return Promise.resolve();
+    return fetchJSON(API + "/scoreboard").then(function (sb) {
+      var evs = sb.events || [];
+      if (!evs.length) throw new Error("no games");
+      var live = evs.find(function (e) { return get(e, ["status", "type", "state"]) === "in"; });
+      eventId = (live || evs[0]).id;
+      setBarLink();
+    });
+  }
+
   function refresh() {
-    fetchJSON(API + "/summary?event=" + encodeURIComponent(eventId)).then(function (summary) {
+    pickEvent().then(function () {
+      return fetchJSON(API + "/summary?event=" + encodeURIComponent(eventId));
+    }).then(function (summary) {
       var date = sbDate || sbDateFromISO(get(summary, ["header", "competitions", 0, "date"], null));
       return fetchJSON(API + "/scoreboard" + (date ? "?dates=" + date : "")).catch(function () { return null; }).then(function (sb) {
         return [summary, sb];
