@@ -9,6 +9,17 @@ A self-hosted, ESPN-Gamecast-style live scoreboard. Pure static HTML/CSS/JS — 
 
 Both pages have a day/night toggle (☀️/🌙) that follows your system preference by default and remembers your choice.
 
+## Mini strip versions
+
+Two minimized, banner-shaped versions scale to fill whatever height you give them (browser strip, OBS browser source, embedded iframe — e.g. ~1820×130):
+
+- **`ticker.html`** — ESPN BottomLine-style ticker of every game on the slate: logos, score, possession, live clock or kickoff time. Auto-scrolls (marquee) when the slate is wider than the strip; clicking a game opens its Gamecast. Params: `?date=YYYYMMDD` (slate), `?speed=90` (marquee px/sec), `?theme=light|director`, `?brand=TEXT` (left badge text), `?bg=transparent` (for overlays).
+- **`gamebar.html`** — one game as a single bar: logos, score, possession, live clock, down & distance, a mini field-position graphic with the ball, and last play, with team-color underlines. Clicking it opens the full Gamecast. Params: `?event=<espn-event-id>`, `?theme=light|director`, `?brand=TEXT`, `?bg=transparent`.
+
+`?theme=director` is a stream-overlay skin — bolt yellow + electric teal on black (Chargers broadcast vibe) with a badge block (default ⚡, override with `?brand=`). Sized for a lower-third: give the iframe/browser-source the bottom ~fifth of a 1080p canvas (e.g. 1920×205) and everything scales to fill it.
+
+Embed example: `<iframe src="https://rclevenger-hm.github.io/nfl-gamecast/gamebar.html?theme=director" style="width:100%;height:205px;border:0"></iframe>`
+
 ## CI/CD (GitHub Actions)
 
 `.github/workflows/deploy.yml` runs on every push to `main` (and manually via *Run workflow*):
